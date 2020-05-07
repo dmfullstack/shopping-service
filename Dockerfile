@@ -6,8 +6,8 @@ COPY src/ shopping-service/src/
 
 WORKDIR shopping-service/
 
-RUN gradle clean build
+RUN gradle build
 
 EXPOSE 8091
 
-ENTRYPOINT [ "java", "-jar", "/shopping-service/build/lib/shopping-service.jar"]
+ENTRYPOINT [ "java", "-jar", "/shopping-service/build/libs/shopping-service.jar"]
