@@ -1,82 +1,74 @@
-pipeline {
-    agent any
+def CONTAINER_NAME="shopping-service"
+def CONTAINER_TAG="latest"
+def DOCKER_HUB_USER="dineshmetkari"
+def HTTP_PORT="8091"
 
-    triggers {
-        pollSCM('*/5 * * * *')
+node {
+
+    stage('Initialize'){
+        def dockerHome = tool 'myDocker'
+        def mavenHome  = tool 'myMaven'
+	def gradleHome  = tool 'myGradle'
+        env.PATH = "${dockerHome}/bin:${mavenHome}/bin:${gradleHome}/bin:${env.PATH}"
     }
 
-    stages {
-        stage('Compile') {
-            steps {
-                gradlew('clean', 'classes')
-            }
-        }
-        stage('Unit Tests') {
-            steps {
-                gradlew('test')
-            }
-            post {
-                always {
-                    junit '**/build/test-results/test/TEST-*.xml'
-                }
-            }
-        }
-        
-        stage('Long-running Verification') {
-            //environment {
-                //SONAR_LOGIN = credentials('SONARCLOUD_TOKEN')
-            //}
-            //parallel {
-              //  stage('Integration Tests') {
-                    steps {
-                        gradlew('integrationTest')
-                    }
-                    post {
-                        always {
-                            junit '**/build/test-results/integrationTest/TEST-*.xml'
-                        }
-                    }
-                //}
-            /*
-                stage('Code Analysis') {
-                    steps {
-                        gradlew('sonarqube')
-                    }
-                }
-                */
-           // }
-        }
+    stage('Checkout') {
+        checkout scm
+    }
 
-        stage('Assemble') {
-            steps {
-                gradlew('assemble')
-                stash includes: '**/build/libs/*.war', name: 'app'
-            }
+    stage('Build'){
+        sh "gradle clean build"
+    }
+/*
+    stage('Sonar'){
+        try {
+            sh "mvn sonar:sonar"
+        } catch(error){
+            echo "The sonar server could not be reached ${error}"
         }
-        stage('Promotion') {
-            steps {
-                timeout(time: 1, unit:'DAYS') {
-                    input 'Deploy to Production?'
-                }
-            }
-        }
-        stage('Deploy to Production') {
-            environment {
-                HEROKU_API_KEY = credentials('HEROKU_API_KEY')
-            }
-            steps {
-                unstash 'app'
-                gradlew('deployHeroku')
-            }
+     }
+*/
+    stage("Image Prune"){
+        imagePrune(CONTAINER_NAME)
+    }
+
+    stage('Image Build'){
+        imageBuild(CONTAINER_NAME, CONTAINER_TAG)
+    }
+
+    stage('Push to Docker Registry'){
+        withCredentials([usernamePassword(credentialsId: 'dockerHubAccount', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+            pushToImage(CONTAINER_NAME, CONTAINER_TAG, USERNAME, PASSWORD)
         }
     }
-    post {
-        failure {
-            mail to: 'dineshmetkari@gmail.com', subject: 'Build failed', body: 'Please fix!'
-        }
+
+    stage('Run App'){
+        runApp(CONTAINER_NAME, CONTAINER_TAG, DOCKER_HUB_USER, HTTP_PORT)
     }
+
 }
 
-def gradlew(String... args) {
-    sh "./gradlew ${args.join(' ')} -s"
+def imagePrune(containerName){
+    try {
+        sh "docker image prune -f"
+        sh "docker stop $containerName"
+    } catch(error){}
+}
+
+def imageBuild(containerName, tag){
+    sh "docker build -t $containerName:$tag  -t $containerName --pull --no-cache ."
+    echo "Image build complete"
+}
+
+def pushToImage(containerName, tag, dockerUser, dockerPassword){
+    sh "docker login --username $dockerUser --password $dockerPassword"
+    sh "docker tag $containerName:$tag $dockerUser/$containerName:$tag"
+    sh "docker push $dockerUser/$containerName:$tag"
+    echo "Image push complete"
+}
+
+def runApp(containerName, tag, dockerHubUser, httpPort){
+    sh "docker pull $dockerHubUser/$containerName"
+    sh "docker run -d --rm -p $httpPort:$httpPort --name $containerName $dockerHubUser/$containerName:$tag"
+    echo "Application started on port: ${httpPort} (http)"
 }
