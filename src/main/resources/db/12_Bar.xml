@@ -1,0 +1,16 @@
+<order>
+  <id>12</id>
+  <client>Bar</client>
+  <articles>
+    <article>
+      <id>3</id>
+      <item>kucyk</item>
+      <amount>2</amount>
+    </article>
+    <article>
+      <id>2</id>
+      <item>monitor</item>
+      <amount>1</amount>
+    </article>
+  </articles>
+</order>
