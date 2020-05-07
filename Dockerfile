@@ -1,13 +1,13 @@
 FROM gradle
 
-COPY build.gradle shopping-service/
+COPY build.gradle pipeline/
 
-COPY src/ shopping-service/src/
+COPY src/ pipeline/src/
 
-WORKDIR shopping-service/
+WORKDIR pipeline/
 
-RUN gradle build
+RUN gradle clean build
 
 EXPOSE 8091
 
-ENTRYPOINT [ "java", "-jar", "/shopping-service/build/libs/shopping-service.jar"]
+ENTRYPOINT [ "java", "-jar", "/pipeline/build/libs/shopping-service.jar"]
