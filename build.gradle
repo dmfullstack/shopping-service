@@ -22,7 +22,8 @@ apply plugin: 'io.spring.dependency-management'
 apply plugin: 'net.foragerr.jmeter'
 
 group = 'com.hania'
-version = '0.0.1-SNAPSHOT'
+//version = '1.0-SNAPSHOT'
+version = null
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
@@ -34,6 +35,7 @@ repositories {
 jar {
     baseName = 'shopping-service'
     version = version
+
 }
 
 jmeter {
